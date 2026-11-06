@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La concentration en quantité de matière</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#ffffff; --ink:#1d2733; --muted:#5f6b7a; --line:#dde3ea;
+    --red:#d33a3a; --red-soft:#fbe9e9; --blue:#2c7cc9; --blue-soft:#e6f1fb; --green:#2e8b57; --green-soft:#e5f4ec;
+    --amber:#b7791f; --amber-soft:#fdf3e1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4}
+  header{padding:18px 24px 6px;max-width:1320px;margin:0 auto}
+  header{text-align:center}
+  header h1{margin:0;font-size:1.45rem;letter-spacing:-.01em}
+  header p{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+  .legend-ball{display:inline-block;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff8f8f,#c62828 70%);vertical-align:-1px;margin-right:4px}
+  main{display:grid;grid-template-columns:270px minmax(320px,640px);justify-content:center;gap:16px;padding:12px 24px 24px;max-width:1320px;margin:0 auto;align-items:start}
+  @media (max-width:760px){main{grid-template-columns:1fr;padding:10px}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 8px}
+  h2:first-child{margin-top:0}
+  label{display:block;font-size:.92rem;font-weight:600;margin-bottom:6px}
+  .inrow{display:flex;gap:8px;align-items:center}
+  input[type=text]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:1rem;font-family:inherit}
+  input[type=text]:disabled{background:#f1f3f6;color:var(--muted)}
+  .unit{color:var(--muted);font-size:.92rem;white-space:nowrap}
+  .hint{font-size:.85rem;color:var(--muted);margin:6px 0 10px;min-height:1.2em}
+  button{font-family:inherit;font-size:.92rem;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 12px;border-radius:9px;cursor:pointer;transition:background .15s,border-color .15s}
+  button:hover:not(:disabled){border-color:#b9c3cf;background:#f7f9fb}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.full{width:100%}
+  button.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+  button.primary:hover:not(:disabled){background:#bd2f2f;border-color:#bd2f2f}
+  button.water{background:var(--blue-soft);border-color:#c5dcf2;color:#1b5a96;font-weight:600}
+  button.water:hover:not(:disabled){background:#d7e9f9}
+  button.tap{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600;user-select:none;-webkit-user-select:none;touch-action:none}
+  button.tap.active{background:#1f5f9e}
+  button.ghost{color:var(--muted)}
+  button.out{background:#fdf0e7;border-color:#f1d3bd;color:#99461a;font-weight:600}
+  button.out:hover:not(:disabled){background:#fae3d3}
+  button.tap.out{background:#c8622a;border-color:#c8622a;color:#fff}
+  button.tap.out.active{background:#a14d1f}
+  .btnrow2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .btnrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+  .stage{display:flex;flex-direction:column;align-items:center;padding:14px}
+  canvas{display:block;width:100%}
+  #beaker{max-width:420px;aspect-ratio:420/478}
+  .cards{display:grid;grid-template-columns:minmax(max-content,1.45fr) minmax(max-content,1fr);gap:8px;width:100%;margin-bottom:6px}
+  .card.row{padding:8px 14px}
+  .card.row > span, .card.c > span{font-size:.85rem}
+  .card.row > span{white-space:nowrap}
+  @media (max-width:560px){.cards{grid-template-columns:1fr 1fr}.card.row > span{white-space:normal}}
+  .card.row .val{margin-top:2px}
+  .card.row .val small{display:inline;margin-left:8px}
+  @media (max-width:520px){.card.row .val small{display:block;margin-left:0}}
+  .card.c{grid-column:1/-1;display:flex;flex-direction:column;justify-content:center}
+  .card{border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+  .card > span{display:block;font-size:.8rem;color:var(--muted)}
+  .card b{font-size:1.15rem;font-variant-numeric:tabular-nums}
+  .card small{display:block;color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums}
+  .card.n{background:var(--red-soft);border-color:#f2cccc}
+  .card.v{background:var(--blue-soft);border-color:#c5dcf2}
+  .card.c{background:#fff}
+  .card.c{align-items:center;text-align:center;gap:6px}
+  .card.c > span{align-self:flex-start}
+  .card.c{justify-content:flex-start}
+  .card.c .eqn{flex:1}
+  .eqn{font-size:1rem;display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .eqn i{font-family:"Times New Roman",Georgia,serif;font-size:1.15em}
+  .frac{display:inline-flex;flex-direction:column;align-items:center}
+  .frac > span{display:block;padding:1px 4px;line-height:1.3}
+  .frac > span:first-child{border-bottom:1.6px solid currentColor}
+  .eqn .res{font-size:1.2rem;font-weight:700}
+  .anim{display:inline-block;font-size:1em;transition:font-size .22s ease, color .22s ease}
+  .anim.grow{font-size:1.4em;color:#1f8a4c}
+  .anim.shrink{font-size:.72em;color:#b4441d}
+</style>
+</head>
+<body>
+<header>
+  <h1>La concentration en quantité de matière</h1>
+  <p><span class="legend-ball"></span>1 boule rouge = 0,005 mol de soluté &nbsp;·&nbsp; bécher gradué de 1 L &nbsp;·&nbsp; solvant : eau</p>
+</header>
+
+<main>
+  <section class="panel controls">
+    <h2>1. Soluté</h2>
+    <label for="nInput">Quantité de matière n<sub>soluté</sub></label>
+    <div class="inrow"><input id="nInput" type="text" inputmode="decimal" value="0,050" autocomplete="off"><span class="unit">mol</span></div>
+    <div class="hint" id="nHint"></div>
+    <button id="btnSolute" class="primary full">Introduire le soluté</button>
+
+    <h2>2. Solvant (eau)</h2>
+    <div class="btnrow">
+      <button class="water" data-add="10">+10 mL</button>
+      <button class="water" data-add="50">+50 mL</button>
+      <button class="water" data-add="100">+100 mL</button>
+    </div>
+    <div class="btnrow">
+      <button class="out" data-add="-10">−10 mL</button>
+      <button class="out" data-add="-50">−50 mL</button>
+      <button class="out" data-add="-100">−100 mL</button>
+    </div>
+    <div class="inrow" style="margin-bottom:8px">
+      <input id="customV" type="text" inputmode="decimal" value="25" autocomplete="off" aria-label="Volume en mL">
+      <span class="unit">mL</span>
+      <button id="btnCustom" class="water">Verser</button>
+      <button id="btnCustomOut" class="out">Retirer</button>
+    </div>
+    <div class="btnrow2">
+      <button id="btnTap" class="tap">Maintenir : verser</button>
+      <button id="btnTapOut" class="tap out">Maintenir : retirer</button>
+    </div>
+    <div class="hint" id="solvHint"></div>
+
+    <h2>3. Agitation</h2>
+    <button id="btnStir" class="full">Agiter avec l'agitateur en verre</button>
+    <h2>4. Recommencer</h2>
+    <button id="btnReset" class="ghost full">Vider le bécher</button>
+  </section>
+
+  <section class="panel stage">
+    <div class="cards">
+      <div class="card n row"><span>Quantité de matière de soluté n<sub>soluté</sub></span><div class="val"><b id="rN">—</b><small id="rNb">&nbsp;</small></div></div>
+      <div class="card v row"><span>Volume de solution V</span><div class="val"><b id="rV">0 mL</b><small id="rVL">= 0,000 L</small></div></div>
+      <div class="card c"><span>Concentration en quantité de matière C</span>
+        <div class="eqn"><span id="lC" class="anim"><i>C</i></span> = <span class="frac"><span><span id="lN" class="anim"><i>n</i><sub>soluté</sub></span></span><span><span id="lV" class="anim"><i>V</i></span></span></span> = <span class="frac"><span><span id="aN" class="anim">?</span></span><span><span id="aV" class="anim">?</span></span></span> = <span class="res"><span id="aC" class="anim">?</span></span></div>
+      </div>
+    </div>
+    <canvas id="beaker" aria-label="Bécher contenant le soluté et le solvant"></canvas>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  // ---------- Constantes du modèle ----------
+  const MOL_PER_BALL = 0.005;
+  const N_MAX = 300;               // 1,5 mol max
+  const VMAX = 1000;               // mL
+  const W = 420, H = 478, TOP_CROP = 16;          // repère logique du bécher
+  const G = { L: 88, R: 328, B: 486, T: 126 }; // intérieur du bécher ; T = graduation 1000 mL
+  const RIM = G.T - 34;
+  const PX_PER_ML = (G.B - G.T) / VMAX;
+  const R = 4;                     // rayon d'une boule (px)
+  const JIT = 2.2, JW = 2.5, JG = 2.2, JSIG = JIT * Math.sqrt(2 * JG) * JW; // petite agitation
+
+  // ---------- Formats français ----------
+  const f3 = new Intl.NumberFormat("fr-FR", { minimumSignificantDigits: 3, maximumSignificantDigits: 3 });
+  const f2d = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const f4d = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  const f3d = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  const f0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+  
+  // ---------- Canvases ----------
+  function setup(canvas, w, h) {
+    const d = window.devicePixelRatio || 1;
+    canvas.width = Math.round(w * d); canvas.height = Math.round(h * d);
+    const c = canvas.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); return c;
+  }
+  const cvB = document.getElementById("beaker"), ctx = setup(cvB, W, H);
+  let graphDirty = false;
+
+  // Sprite de boule
+  const sprite = document.createElement("canvas");
+  (function () {
+    const d = 4, s = (R * 2 + 2) * d; sprite.width = sprite.height = s;
+    const c = sprite.getContext("2d"); c.scale(d, d);
+    const g = c.createRadialGradient(R + 1 - 2, R + 1 - 2, 1, R + 1, R + 1, R);
+    g.addColorStop(0, "#ff9a9a"); g.addColorStop(0.55, "#e53935"); g.addColorStop(1, "#a51c1c");
+    c.fillStyle = g; c.beginPath(); c.arc(R + 1, R + 1, R, 0, Math.PI * 2); c.fill();
+  })();
+
+  // ---------- État ----------
+  let balls = [];
+  let V = 0, Vtarget = 0;
+  let hold = 0; // 1 : verser en continu, -1 : retirer en continu
+  let stirT = 0, stirPhase = 0;
+  let soluteIn = false;
+  let releaseAcc = 0;
+  let homo = true, spread = 0, targetV = 0;
+  let time = 0;
+
+  const $ = id => document.getElementById(id);
+  const nInput = $("nInput");
+
+  function randn() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  const surfaceY = () => G.B - V * PX_PER_ML;
+  const N = () => balls.length;
+  const nMol = () => Math.round(balls.length * MOL_PER_BALL * 1000) / 1000;
+
+  // ---------- Saisie de n ----------
+  function parseN() {
+    const raw = nInput.value.trim().replace(",", ".");
+    const v = parseFloat(raw);
+    if (!isFinite(v) || v <= 0) return { ok: false, msg: "Entrer une valeur positive (ex. 0,050)." };
+    let count = Math.round(v / MOL_PER_BALL);
+    let msg = "";
+    if (count < 1) { count = 1; msg = "Minimum 0,005 mol (1 boule). "; }
+    if (count > N_MAX) { count = N_MAX; msg = "Maximum 1,500 mol (300 boules). "; }
+    const rounded = count * MOL_PER_BALL;
+    if (Math.abs(rounded - v) > 1e-9 && !msg) msg = "Arrondi à " + f3d.format(rounded) + " mol. ";
+    return { ok: true, count, msg: msg + "Soit " + count + " boule" + (count > 1 ? "s" : "") + " de 0,005 mol." };
+  }
+  function refreshNHint() {
+    if (soluteIn) { $("nHint").innerHTML = "Vider le bécher pour changer n<sub>soluté</sub>."; return; }
+    const p = parseN(); $("nHint").textContent = p.msg;
+  }
+  nInput.addEventListener("input", refreshNHint);
+
+  // ---------- Tas de soluté ----------
+  function pilePositions(count) {
+    const pos = [], cx = (G.L + G.R) / 2, dx = 2 * R + 0.6, dy = R * 1.75;
+    let k = 0, left = count;
+    while (left > 0) {
+      const per = Math.max(1, 26 - Math.floor(k / 2)), m = Math.min(per, left);
+      const y = G.B - R - 1 - k * dy, w = (m - 1) * dx;
+      for (let i = 0; i < m; i++) pos.push({ x: cx - w / 2 + i * dx, y });
+      left -= m; k++;
+    }
+    return pos;
+  }
+  function reassignPile() {
+    const solids = balls.filter(b => b.state === "solid" || b.state === "falling");
+    solids.sort((a, b) => (b.ty - a.ty) || (a.tx - b.tx));
+    const pos = pilePositions(solids.length);
+    solids.forEach((b, i) => { b.tx = pos[i].x; b.ty = pos[i].y; });
+  }
+
+  function introduceSolute() {
+    const p = parseN(); if (!p.ok || soluteIn) return;
+    const pos = pilePositions(p.count), cx = (G.L + G.R) / 2;
+    balls = pos.map((q, i) => ({
+      x: cx + (Math.random() - 0.5) * 24, y: RIM - 40 - Math.random() * 10,
+      tx: q.x, ty: q.y, vx: 0, vy: 0, state: "falling", delay: i * Math.min(0.035, 3 / pos.length)
+    }));
+    soluteIn = true; releaseAcc = 0;
+    nInput.disabled = true; refreshNHint();
+  }
+
+  // ---------- Solvant ----------
+  // Volume minimal : le soluté dissous doit pouvoir rester en solution
+  function minV() {
+    const nd = countState("dissolved");
+    if (!nd) return 0;
+    const w = (G.R - G.L) - 2 * R - 6;
+    const h = nd * (2 * R + 1) * (2 * R + 1) / w + 2 * R + 4;
+    return Math.ceil(h / PX_PER_ML / 10) * 10;
+  }
+  let hintTimer = 0;
+  function showHint(t) { $("solvHint").textContent = t; clearTimeout(hintTimer); hintTimer = setTimeout(() => { $("solvHint").textContent = ""; }, 3500); }
+  function limitHint(m) { showHint(m > 0 ? "Impossible de descendre sous " + m + " mL : le soluté dissous doit rester en solution." : "Le bécher est vide."); }
+  function pour(ml) {
+    const m = minV(), want = Math.round(Vtarget + ml);
+    if (ml < 0 && want < m) limitHint(m);
+    if (ml > 0 && want > VMAX) showHint("Le bécher est plein (1 000 mL).");
+    Vtarget = Math.max(Math.min(m, Vtarget), Math.min(VMAX, want));
+  }
+  document.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => pour(+b.dataset.add)));
+  const customAmount = () => { const v = parseFloat($("customV").value.replace(",", ".")); return isFinite(v) && v > 0 ? v : 0; };
+  $("btnCustom").addEventListener("click", () => { const v = customAmount(); if (v) pour(v); });
+  $("btnCustomOut").addEventListener("click", () => { const v = customAmount(); if (v) pour(-v); });
+  $("customV").addEventListener("keydown", e => { if (e.key === "Enter") $("btnCustom").click(); });
+  const taps = { 1: $("btnTap"), "-1": $("btnTapOut") };
+  function stopTap() {
+    if (!hold) return;
+    taps[hold].classList.remove("active"); hold = 0;
+    Vtarget = Math.max(minV(), Math.min(VMAX, Math.round(Vtarget)));
+  }
+  for (const dir of [1, -1]) {
+    const el = taps[dir];
+    el.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      if (dir > 0 && Vtarget >= VMAX) return;
+      if (dir < 0 && Vtarget <= minV()) { limitHint(minV()); return; }
+      stopTap(); hold = dir; el.classList.add("active");
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    el.addEventListener("pointerup", stopTap);
+    el.addEventListener("pointercancel", stopTap);
+    el.addEventListener("lostpointercapture", stopTap);
+    el.addEventListener("contextmenu", e => e.preventDefault());
+  }
+
+  $("btnSolute").addEventListener("click", introduceSolute);
+  $("btnStir").addEventListener("click", () => { if (V > 0) stirT = 2.6; });
+  $("btnReset").addEventListener("click", () => {
+    balls = []; V = Vtarget = 0; stopTap(); stirT = 0; soluteIn = false; targetV = 0;
+    nInput.disabled = false; refreshNHint(); graphDirty = true;
+  });
+
+  const allDissolved = () => soluteIn && balls.length > 0 && balls.every(b => b.state === "dissolved");
+  const countState = s => balls.reduce((a, b) => a + (b.state === s ? 1 : 0), 0);
+
+  // ---------- Mise à jour physique ----------
+  function update(dt) {
+    time += dt;
+    if (hold === 1) { Vtarget = Math.min(VMAX, Vtarget + 30 * dt); if (Vtarget >= VMAX) stopTap(); }
+    if (hold === -1) { const m = minV(); Vtarget = Math.max(m, Vtarget - 30 * dt); if (Vtarget <= m) { limitHint(m); stopTap(); } }
+    const prevV = V;
+    if (V < Vtarget) V = Math.min(Vtarget, V + 220 * dt);
+    else if (V > Vtarget) V = Math.max(Vtarget, V - 220 * dt);
+    if (V !== prevV) graphDirty = true;
+    if (stirT > 0) { stirT -= dt; stirPhase += dt; }
+
+    const sy = surfaceY();
+    const stirring = stirT > 0;
+
+    // Chute du soluté
+    for (const b of balls) {
+      if (b.state === "falling") {
+        if (b.delay > 0) { b.delay -= dt; continue; }
+        b.vy += 1100 * dt;
+        if (b.y > sy && V > 0) b.vy = Math.min(b.vy, 140);
+        b.y += b.vy * dt;
+        b.x += (b.tx - b.x) * Math.min(1, dt * 5);
+        if (b.y >= b.ty) { b.y = b.ty; b.vy = 0; b.state = "solid"; }
+      } else if (b.state === "solid") {
+        const k = Math.min(1, dt * 6);
+        b.x += (b.tx - b.x) * k; b.y += (b.ty - b.y) * k;
+      }
+    }
+
+    // Dissolution : seules les boules au contact du solvant se dissolvent
+    const reg = region(sy);
+    if (V > 0) {
+      const sub = balls.filter(b => b.state === "solid" && b.y >= sy);
+      if (sub.length) {
+        releaseAcc += (stirring ? Math.max(30, balls.length / 2) : 1.3 + balls.length / 50) * dt;
+        let changed = false; const released = [];
+        while (releaseAcc >= 1 && sub.length) {
+          let iTop = 0; for (let i = 1; i < sub.length; i++) if (sub[i].y < sub[iTop].y) iTop = i;
+          const b = sub.splice(iTop, 1)[0];
+          b.state = "dissolved"; released.push(b);
+          releaseAcc -= 1; changed = true;
+        }
+        if (changed) {
+          reassignPile();
+          if (Math.abs(V - targetV) > 0.5) retarget(reg);
+          else {
+            const fixed = balls.filter(x => x.state === "dissolved" && !released.includes(x)).map(x => ({ x: x.tx, y: x.ty }));
+            dispersedPoints(released.length, reg, fixed).forEach((p, i) => { released[i].tx = p.x; released[i].ty = p.y; });
+          }
+        }
+      } else releaseAcc = 0;
+    }
+
+    // Après un ajout de solvant : nouvelle répartition dispersée dans tout le volume
+    const pouringNow = hold !== 0 || Math.abs(V - Vtarget) > 0.01;
+    if (!pouringNow && Math.abs(V - targetV) > 0.5) retarget(reg);
+
+    // Déplacement progressif vers les positions cibles, puis quasi-immobilité
+    const tau = stirring ? 0.25 : 1.4, vmax = stirring ? 420 : 70;
+    const k = 1 - Math.exp(-dt / tau), lim = vmax * dt;
+    spread = 0; let nd = 0;
+    for (const b of balls) {
+      if (b.state !== "dissolved") continue;
+      let mx = (b.tx - b.x) * k, my = (b.ty - b.y) * k;
+      const m = Math.hypot(mx, my);
+      if (m > lim) { mx *= lim / m; my *= lim / m; }
+      b.x += mx; b.y += my;
+      b.x = Math.min(reg.xmax, Math.max(reg.xmin, b.x));
+      b.y = Math.min(reg.ymax, Math.max(reg.ymin, b.y));
+      spread = Math.max(spread, Math.hypot(b.tx - b.x, b.ty - b.y)); nd++;
+      // Petite agitation autour de la position moyenne (déplacement moyen nul) :
+      // oscillateur amorti excité aléatoirement, écart type ≈ JIT px
+      if (b.jx === undefined) { b.jx = b.jy = b.jvx = b.jvy = 0; }
+      const sq = JSIG * Math.sqrt(dt);
+      b.jvx += (-JW * JW * b.jx - JG * b.jvx) * dt + sq * randn();
+      b.jvy += (-JW * JW * b.jy - JG * b.jvy) * dt + sq * randn();
+      b.jx += b.jvx * dt; b.jy += b.jvy * dt;
+    }
+    homo = nd === 0 || spread < 3;
+  }
+
+  // Zone occupée par la solution
+  function region(sy) {
+    const xmin = G.L + R + 3, xmax = G.R - R - 3, ymax = G.B - R - 2;
+    return { xmin, xmax, ymax, ymin: Math.min(sy + R + 2, ymax) };
+  }
+  // Positions bien dispersées (échantillonnage « meilleur candidat ») dans la zone,
+  // en évitant le soluté encore solide
+  function dispersedPoints(count, reg, fixed) {
+    const pts = fixed ? fixed.slice() : [];
+    const solids = balls.filter(b => b.state === "solid").map(b => ({ x: b.tx, y: b.ty }));
+    const w = reg.xmax - reg.xmin, h = reg.ymax - reg.ymin;
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      let best = null, bestScore = -1;
+      for (let c = 0; c < 40; c++) {
+        const q = { x: reg.xmin + Math.random() * w, y: reg.ymin + Math.random() * h };
+        let d = Infinity;
+        for (const p of pts) d = Math.min(d, Math.hypot(p.x - q.x, p.y - q.y));
+        for (const p of solids) d = Math.min(d, Math.hypot(p.x - q.x, p.y - q.y) * 1.5);
+        d = Math.min(d, 2 * (q.x - reg.xmin + R), 2 * (reg.xmax - q.x + R));
+        if (h > 4 * R) d = Math.min(d, 2 * (q.y - reg.ymin + R), 2 * (reg.ymax - q.y + R));
+        if (d > bestScore) { bestScore = d; best = q; }
+      }
+      pts.push(best); out.push(best);
+    }
+    return out;
+  }
+  // Attribue à chaque boule dissoute une position cible (la plus proche disponible)
+  function retarget(reg) {
+    targetV = V;
+    const dis = balls.filter(b => b.state === "dissolved");
+    if (!dis.length) return;
+    const pts = dispersedPoints(dis.length, reg);
+    const free = dis.slice();
+    pts.sort((a, b) => b.y - a.y);
+    for (const p of pts) {
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i < free.length; i++) {
+        const d = Math.hypot(free[i].x - p.x, free[i].y - p.y);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      const b = free.splice(bi, 1)[0]; b.tx = p.x; b.ty = p.y;
+    }
+  }
+
+  // ---------- Dessin du bécher ----------
+  function innerPath(c, top) {
+    const r = 12;
+    c.beginPath();
+    c.moveTo(G.L, top); c.lineTo(G.L, G.B - r); c.quadraticCurveTo(G.L, G.B, G.L + r, G.B);
+    c.lineTo(G.R - r, G.B); c.quadraticCurveTo(G.R, G.B, G.R, G.B - r); c.lineTo(G.R, top);
+  }
+  function drawBeaker() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save(); ctx.translate(0, -TOP_CROP);
+
+    const sy = surfaceY();
+    const pouringNow = V < Vtarget - 0.01 || hold === 1;
+    const removingNow = V > Vtarget + 0.01 || hold === -1;
+
+    // liquide
+    if (V > 0) {
+      ctx.save(); innerPath(ctx, RIM); ctx.closePath(); ctx.clip();
+      const g = ctx.createLinearGradient(0, sy, 0, G.B);
+      g.addColorStop(0, "rgba(120,185,240,0.40)"); g.addColorStop(1, "rgba(70,145,215,0.42)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(G.L - 2, G.B + 2);
+      for (let x = G.L - 2; x <= G.R + 2; x += 6) {
+        const amp = (pouringNow || removingNow) ? 1.6 : (stirT > 0 ? 1.2 : 0.3);
+        ctx.lineTo(x, sy + Math.sin(x * 0.08 + time * 6) * amp);
+      }
+      ctx.lineTo(G.R + 2, G.B + 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(40,110,180,0.55)"; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let x = G.L; x <= G.R; x += 6) {
+        const amp = (pouringNow || removingNow) ? 1.6 : (stirT > 0 ? 1.2 : 0.3);
+        const y = sy + Math.sin(x * 0.08 + time * 6) * amp;
+        x === G.L ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke(); ctx.restore();
+    }
+
+    // boules
+    const sw = sprite.width / 4;
+    for (const b of balls) {
+      if (b.state === "falling" && b.delay > 0) continue;
+      const ox = b.state === "dissolved" && b.jx !== undefined ? b.jx : 0;
+      const oy = b.state === "dissolved" && b.jy !== undefined ? b.jy : 0;
+      let dx = b.x + ox, dy = b.y + oy;
+      if (b.state === "dissolved") {
+        const rg = region(surfaceY());
+        dx = Math.min(rg.xmax + 1, Math.max(rg.xmin - 1, dx)); dy = Math.min(rg.ymax + 1, Math.max(rg.ymin - 1, dy));
+      }
+      ctx.drawImage(sprite, dx - R - 1, dy - R - 1, sw, sw);
+    }
+
+    // agitateur en verre
+    if (stirT > 0) {
+      const a = Math.sin(stirPhase * 9);
+      const x1 = (G.L + G.R) / 2 + a * 70, x2 = (G.L + G.R) / 2 + Math.sin(stirPhase * 9 + 0.5) * 85;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(170,190,205,0.75)"; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(x1, RIM - 60); ctx.lineTo(x2, G.B - 14); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x1 - 1.5, RIM - 58); ctx.lineTo(x2 - 1.5, G.B - 16); ctx.stroke();
+    }
+
+    // verre du bécher
+    ctx.save();
+    ctx.strokeStyle = "rgba(78,98,120,0.9)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(G.L - 14, RIM - 6); ctx.quadraticCurveTo(G.L - 2, RIM - 2, G.L - 1.5, RIM + 10);
+    ctx.lineTo(G.L - 1.5, G.B - 12); ctx.quadraticCurveTo(G.L - 1.5, G.B + 1.5, G.L + 12, G.B + 1.5);
+    ctx.lineTo(G.R - 12, G.B + 1.5); ctx.quadraticCurveTo(G.R + 1.5, G.B + 1.5, G.R + 1.5, G.B - 12);
+    ctx.lineTo(G.R + 1.5, RIM); ctx.lineTo(G.R + 6, RIM - 3);
+    ctx.stroke();
+    ctx.restore();
+
+    // graduations
+    ctx.fillStyle = "#4b5b6c"; ctx.strokeStyle = "rgba(60,78,98,0.85)";
+    ctx.font = "11px system-ui, sans-serif"; ctx.textBaseline = "middle";
+    for (let v = 50; v <= VMAX; v += 50) {
+      const y = G.B - v * PX_PER_ML, major = v % 100 === 0;
+      ctx.lineWidth = major ? 1.4 : 1;
+      ctx.beginPath(); ctx.moveTo(G.R, y); ctx.lineTo(G.R - (major ? 18 : 10), y); ctx.stroke();
+      if (major) ctx.fillText(String(v), G.R + 8, y);
+    }
+    ctx.fillText("mL", G.R + 8, RIM + 6);
+
+    // pissette et pipette
+    drawWashBottle(pouringNow, sy);
+    if (removingNow) drawPipette(sy);
+
+    // étiquette de volume
+    if (V > 0) {
+      const t = f0.format(Math.round(V)) + " mL";
+      ctx.font = "600 12px system-ui, sans-serif";
+      const tw = ctx.measureText(t).width + 12, y = Math.max(RIM + 20, Math.min(G.B - 10, sy));
+      ctx.fillStyle = "rgba(44,124,201,0.95)";
+      roundRect(ctx, 6, y - 10, tw, 20, 10); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.textBaseline = "middle"; ctx.fillText(t, 12, y + 0.5);
+      ctx.strokeStyle = "rgba(44,124,201,0.5)"; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(6 + tw, y); ctx.lineTo(G.L - 4, y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  function drawPipette(sy) {
+    const x = G.R - 46, top = RIM - 70, tip = Math.min(G.B - 8, Math.max(sy + 26, RIM + 40));
+    // liquide aspiré
+    const lvl = Math.max(top + 26, tip - 46 - 14 * Math.sin(time * 4));
+    ctx.fillStyle = "rgba(90,160,225,0.55)"; ctx.fillRect(x - 3.5, lvl, 7, tip - 2 - lvl);
+    // tube
+    ctx.strokeStyle = "rgba(78,98,120,0.85)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x - 5, top + 22); ctx.lineTo(x - 5, tip - 6); ctx.lineTo(x - 1.5, tip); ctx.lineTo(x + 1.5, tip); ctx.lineTo(x + 5, tip - 6); ctx.lineTo(x + 5, top + 22); ctx.stroke();
+    // poire aspirante
+    const sq = 1 + 0.12 * Math.sin(time * 8);
+    ctx.fillStyle = "#c8622a";
+    ctx.beginPath(); ctx.ellipse(x, top + 8, 11 * sq, 15 / sq, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(x - 5, top + 18, 10, 6);
+  }
+  function drawWashBottle(pouringNow, sy) {
+    const tipX = G.L + 34, tipY = RIM - 26;
+    ctx.save();
+    ctx.translate(46, 44); ctx.rotate(-0.55);
+    ctx.fillStyle = "rgba(235,242,248,0.95)"; ctx.strokeStyle = "rgba(78,98,120,0.8)"; ctx.lineWidth = 1.5;
+    roundRect(ctx, -18, -10, 36, 56, 9); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(110,175,235,0.55)"; roundRect(ctx, -16, 14, 32, 30, 7); ctx.fill();
+    ctx.fillStyle = "#2c7cc9"; ctx.fillRect(-9, -17, 18, 8);
+    ctx.restore();
+    ctx.strokeStyle = "rgba(78,98,120,0.85)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(46 + 8, 27); ctx.quadraticCurveTo(70, 8, tipX, tipY); ctx.stroke();
+    if (pouringNow && V < VMAX) {
+      const endY = Math.min(G.B, sy);
+      ctx.strokeStyle = "rgba(70,145,215,0.8)"; ctx.lineWidth = hold === 1 ? 2.5 : 4;
+      ctx.beginPath(); ctx.moveTo(tipX, tipY + 2);
+      ctx.quadraticCurveTo(tipX + 10, tipY + 30, tipX + 12, endY); ctx.stroke();
+    }
+  }
+
+  // ---------- Affichages ----------
+  const cache = {};
+  function setText(id, t) { if (cache[id] !== t) { cache[id] = t; $(id).textContent = t; } }
+  // Grossit la police quand la valeur augmente, la réduit quand elle diminue
+  const animPrev = {}, animTimers = {};
+  const LITERAL = { aN: "lN", aV: "lV", aC: "lC" };
+  function setAnim(id, text, num) {
+    const el = $(id);
+    if (cache[id] !== text) { cache[id] = text; el.textContent = text; }
+    const prev = animPrev[id];
+    if (num !== null && prev !== undefined && prev !== null && Math.abs(num - prev) > 1e-12) {
+      const cls = num > prev ? "grow" : "shrink";
+      // la grandeur dans la formule littérale s'anime en même temps que sa valeur
+      const els = [el, $(LITERAL[id])];
+      for (const e of els) { e.classList.remove(cls === "grow" ? "shrink" : "grow"); e.classList.add(cls); }
+      clearTimeout(animTimers[id]);
+      animTimers[id] = setTimeout(() => els.forEach(e => e.classList.remove("grow", "shrink")), 650);
+    }
+    animPrev[id] = num;
+  }
+  function setDisabled(id, d) { const el = $(id); if (el.disabled !== d) el.disabled = d; }
+
+  function updateUI() {
+    const Vr = Math.round(V);
+    const total = balls.length, dissolved = countState("dissolved"), falling = countState("falling");
+    const n = nMol();
+    setText("rN", soluteIn ? f3d.format(n) + " mol" : "—");
+    setText("rNb", soluteIn ? total + " boule" + (total > 1 ? "s" : "") + " × 0,005 mol" : "aucun soluté");
+    setText("rV", f0.format(Vr) + " mL");
+    setText("rVL", "= " + f3d.format(Vr / 1000) + " L");
+
+    const ok = allDissolved() && Vr > 0;
+    // Application numérique en direct
+    setAnim("aN", soluteIn ? f3d.format(n) + " mol" : "?", soluteIn ? n : null);
+    setAnim("aV", f3d.format(Vr / 1000) + " L", Vr / 1000);
+    if (ok) { const C = n / (Vr / 1000); setAnim("aC", f3.format(C) + " mol·L⁻¹", C); }
+    else setAnim("aC", "?", null);
+
+
+
+
+    // boutons
+    setDisabled("btnSolute", soluteIn || !parseN().ok);
+    const full = Vtarget >= VMAX;
+    document.querySelectorAll("[data-add]:not([data-add^='-'])").forEach(b => { if (b.disabled !== full) b.disabled = full; });
+    setDisabled("btnCustom", full); setDisabled("btnTap", full && hold !== 1);
+    const empty = Vtarget <= minV();
+    document.querySelectorAll("[data-add^='-']").forEach(b => { if (b.disabled !== empty) b.disabled = empty; });
+    setDisabled("btnCustomOut", empty); setDisabled("btnTapOut", empty && hold !== -1);
+    setDisabled("btnStir", V <= 0);
+  }
+
+  // ---------- Boucle ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    update(dt); drawBeaker(); updateUI();
+    requestAnimationFrame(frame);
+  }
+  refreshNHint();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
