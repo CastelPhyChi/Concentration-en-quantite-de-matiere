@@ -23,6 +23,7 @@
   h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:16px 0 8px}
   h2:first-child{margin-top:0}
   label{display:block;font-size:.92rem;font-weight:600;margin-bottom:6px}
+  .sublabel{font-size:.85rem;color:var(--muted);margin:2px 0 5px}
   .inrow{display:flex;gap:8px;align-items:center}
   input[type=text]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:1rem;font-family:inherit}
   input[type=text]:disabled{background:#f1f3f6;color:var(--muted)}
@@ -47,7 +48,7 @@
   .btnrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
   .stage{display:flex;flex-direction:column;align-items:center;padding:14px}
   canvas{display:block;width:100%}
-  #beaker{max-width:420px;aspect-ratio:420/478}
+  #beaker{max-width:420px;aspect-ratio:420/526}
   .cards{display:grid;grid-template-columns:minmax(max-content,1.45fr) minmax(max-content,1fr);gap:8px;width:100%;margin-bottom:6px}
   .card.row{padding:8px 14px}
   .card.row > span, .card.c > span{font-size:.85rem}
@@ -94,11 +95,13 @@
     <button id="btnSolute" class="primary full">Introduire le soluté</button>
 
     <h2>2. Solvant (eau)</h2>
+    <div class="sublabel">Ajouter de l'eau (pissette) :</div>
     <div class="btnrow">
       <button class="water" data-add="10">+10 mL</button>
       <button class="water" data-add="50">+50 mL</button>
       <button class="water" data-add="100">+100 mL</button>
     </div>
+    <div class="sublabel">Évaporer de l'eau (chauffage) :</div>
     <div class="btnrow">
       <button class="out" data-add="-10">−10 mL</button>
       <button class="out" data-add="-50">−50 mL</button>
@@ -108,11 +111,11 @@
       <input id="customV" type="text" inputmode="decimal" value="25" autocomplete="off" aria-label="Volume en mL">
       <span class="unit">mL</span>
       <button id="btnCustom" class="water">Verser</button>
-      <button id="btnCustomOut" class="out">Retirer</button>
+      <button id="btnCustomOut" class="out">Évaporer</button>
     </div>
     <div class="btnrow2">
       <button id="btnTap" class="tap">Maintenir : verser</button>
-      <button id="btnTapOut" class="tap out">Maintenir : retirer</button>
+      <button id="btnTapOut" class="tap out">Maintenir : chauffer</button>
     </div>
     <div class="hint" id="solvHint"></div>
 
@@ -130,7 +133,7 @@
         <div class="eqn"><span id="lC" class="anim"><i>C</i></span> = <span class="frac"><span><span id="lN" class="anim"><i>n</i><sub>soluté</sub></span></span><span><span id="lV" class="anim"><i>V</i></span></span></span> = <span class="frac"><span><span id="aN" class="anim">?</span></span><span><span id="aV" class="anim">?</span></span></span> = <span class="res"><span id="aC" class="anim">?</span></span></div>
       </div>
     </div>
-    <canvas id="beaker" aria-label="Bécher contenant le soluté et le solvant"></canvas>
+    <canvas id="beaker" aria-label="Bécher contenant le soluté et le solvant, posé sur une plaque chauffante"></canvas>
   </section>
 </main>
 
@@ -138,23 +141,23 @@
 (() => {
   "use strict";
   // ---------- Constantes du modèle ----------
-  const MOL_PER_BALL = 0.005;
+  const MOL_PER_BALL = 0.005;      // quantité de matière représentée par une boule (mol)
   const N_MAX = 300;               // 1,5 mol max
   const VMAX = 1000;               // mL
-  const W = 420, H = 478, TOP_CROP = 16;          // repère logique du bécher
+  const W = 420, H = 526, TOP_CROP = 16;          // repère logique du bécher (avec la plaque chauffante)
   const G = { L: 88, R: 328, B: 486, T: 126 }; // intérieur du bécher ; T = graduation 1000 mL
   const RIM = G.T - 34;
   const PX_PER_ML = (G.B - G.T) / VMAX;
   const R = 4;                     // rayon d'une boule (px)
   const JIT = 2.2, JW = 2.5, JG = 2.2, JSIG = JIT * Math.sqrt(2 * JG) * JW; // petite agitation
+  const POUR_RATE = 220, EVAP_RATE = 90; // mL/s (animation)
 
   // ---------- Formats français ----------
   const f3 = new Intl.NumberFormat("fr-FR", { minimumSignificantDigits: 3, maximumSignificantDigits: 3 });
   const f2d = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const f4d = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   const f3d = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
   const f0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
-  
+
   // ---------- Canvases ----------
   function setup(canvas, w, h) {
     const d = window.devicePixelRatio || 1;
@@ -177,12 +180,14 @@
   // ---------- État ----------
   let balls = [];
   let V = 0, Vtarget = 0;
-  let hold = 0; // 1 : verser en continu, -1 : retirer en continu
+  let hold = 0; // 1 : verser en continu, -1 : chauffer en continu
   let stirT = 0, stirPhase = 0;
   let soluteIn = false;
   let releaseAcc = 0;
   let homo = true, spread = 0, targetV = 0;
   let time = 0;
+  let heat = 0;                    // 0 : plaque froide, 1 : plaque chaude
+  let vapor = [], bubbles = [], vaporAcc = 0, bubbleAcc = 0;
 
   const $ = id => document.getElementById(id);
   const nInput = $("nInput");
@@ -191,6 +196,7 @@
   const surfaceY = () => G.B - V * PX_PER_ML;
   const N = () => balls.length;
   const nMol = () => Math.round(balls.length * MOL_PER_BALL * 1000) / 1000;
+  const heatingNow = () => V > Vtarget + 0.01 || hold === -1;
 
   // ---------- Saisie de n ----------
   function parseN() {
@@ -252,7 +258,7 @@
   }
   let hintTimer = 0;
   function showHint(t) { $("solvHint").textContent = t; clearTimeout(hintTimer); hintTimer = setTimeout(() => { $("solvHint").textContent = ""; }, 3500); }
-  function limitHint(m) { showHint(m > 0 ? "Impossible de descendre sous " + m + " mL : le soluté dissous doit rester en solution." : "Le bécher est vide."); }
+  function limitHint(m) { showHint(m > 0 ? "Impossible d'évaporer sous " + m + " mL : le soluté dissous doit rester en solution." : "Le bécher est vide."); }
   function pour(ml) {
     const m = minV(), want = Math.round(Vtarget + ml);
     if (ml < 0 && want < m) limitHint(m);
@@ -289,11 +295,40 @@
   $("btnStir").addEventListener("click", () => { if (V > 0) stirT = 2.6; });
   $("btnReset").addEventListener("click", () => {
     balls = []; V = Vtarget = 0; stopTap(); stirT = 0; soluteIn = false; targetV = 0;
+    vapor = []; bubbles = []; heat = 0;
     nInput.disabled = false; refreshNHint(); graphDirty = true;
   });
 
   const allDissolved = () => soluteIn && balls.length > 0 && balls.every(b => b.state === "dissolved");
   const countState = s => balls.reduce((a, b) => a + (b.state === s ? 1 : 0), 0);
+
+  // ---------- Évaporation : vapeur et bulles ----------
+  function updateHeat(dt) {
+    const heating = heatingNow() && V > 0;
+    heat = Math.max(0, Math.min(1, heat + (heating ? 2.2 : -0.8) * dt));
+    const sy = surfaceY();
+    if (heating) {
+      // bulles qui montent du fond
+      bubbleAcc += 28 * dt;
+      while (bubbleAcc >= 1) {
+        bubbleAcc -= 1;
+        if (G.B - sy > 14) bubbles.push({ x: G.L + 12 + Math.random() * (G.R - G.L - 24), y: G.B - 4, vy: -(50 + Math.random() * 70), r: 1.4 + Math.random() * 1.8, ph: Math.random() * 6 });
+      }
+      // vapeur qui s'échappe de la surface
+      vaporAcc += 22 * dt;
+      while (vaporAcc >= 1) {
+        vaporAcc -= 1;
+        vapor.push({ x: G.L + 14 + Math.random() * (G.R - G.L - 28), y: sy - 2, vy: -(32 + Math.random() * 26), r: 4 + Math.random() * 4, life: 0, max: 1.8 + Math.random() * 1.0, ph: Math.random() * 6 });
+      }
+    } else { bubbleAcc = 0; vaporAcc = 0; }
+    for (const b of bubbles) { b.y += b.vy * dt; b.x += Math.sin(time * 9 + b.ph) * 10 * dt; }
+    bubbles = bubbles.filter(b => b.y > surfaceY() + 2 && V > 0);
+    for (const p of vapor) {
+      p.life += dt; p.y += p.vy * dt; p.r += 7 * dt;
+      p.x += Math.sin(time * 1.8 + p.ph) * 14 * dt;
+    }
+    vapor = vapor.filter(p => p.life < p.max);
+  }
 
   // ---------- Mise à jour physique ----------
   function update(dt) {
@@ -301,10 +336,11 @@
     if (hold === 1) { Vtarget = Math.min(VMAX, Vtarget + 30 * dt); if (Vtarget >= VMAX) stopTap(); }
     if (hold === -1) { const m = minV(); Vtarget = Math.max(m, Vtarget - 30 * dt); if (Vtarget <= m) { limitHint(m); stopTap(); } }
     const prevV = V;
-    if (V < Vtarget) V = Math.min(Vtarget, V + 220 * dt);
-    else if (V > Vtarget) V = Math.max(Vtarget, V - 220 * dt);
+    if (V < Vtarget) V = Math.min(Vtarget, V + POUR_RATE * dt);
+    else if (V > Vtarget) V = Math.max(Vtarget, V - EVAP_RATE * dt);
     if (V !== prevV) graphDirty = true;
     if (stirT > 0) { stirT -= dt; stirPhase += dt; }
+    updateHeat(dt);
 
     const sy = surfaceY();
     const stirring = stirT > 0;
@@ -348,7 +384,7 @@
       } else releaseAcc = 0;
     }
 
-    // Après un ajout de solvant : nouvelle répartition dispersée dans tout le volume
+    // Après un ajout ou une évaporation de solvant : nouvelle répartition dans tout le volume
     const pouringNow = hold !== 0 || Math.abs(V - Vtarget) > 0.01;
     if (!pouringNow && Math.abs(V - targetV) > 0.5) retarget(reg);
 
@@ -434,7 +470,10 @@
 
     const sy = surfaceY();
     const pouringNow = V < Vtarget - 0.01 || hold === 1;
-    const removingNow = V > Vtarget + 0.01 || hold === -1;
+    const heating = heatingNow() && V > 0;
+
+    // plaque chauffante (sous le bécher)
+    drawHotPlate();
 
     // liquide
     if (V > 0) {
@@ -442,19 +481,20 @@
       const g = ctx.createLinearGradient(0, sy, 0, G.B);
       g.addColorStop(0, "rgba(120,185,240,0.40)"); g.addColorStop(1, "rgba(70,145,215,0.42)");
       ctx.fillStyle = g;
+      const amp = pouringNow ? 1.6 : heating ? 1.3 : (stirT > 0 ? 1.2 : 0.3);
       ctx.beginPath(); ctx.moveTo(G.L - 2, G.B + 2);
-      for (let x = G.L - 2; x <= G.R + 2; x += 6) {
-        const amp = (pouringNow || removingNow) ? 1.6 : (stirT > 0 ? 1.2 : 0.3);
-        ctx.lineTo(x, sy + Math.sin(x * 0.08 + time * 6) * amp);
-      }
+      for (let x = G.L - 2; x <= G.R + 2; x += 6) ctx.lineTo(x, sy + Math.sin(x * 0.08 + time * 6) * amp);
       ctx.lineTo(G.R + 2, G.B + 2); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = "rgba(40,110,180,0.55)"; ctx.lineWidth = 1.5; ctx.beginPath();
       for (let x = G.L; x <= G.R; x += 6) {
-        const amp = (pouringNow || removingNow) ? 1.6 : (stirT > 0 ? 1.2 : 0.3);
         const y = sy + Math.sin(x * 0.08 + time * 6) * amp;
         x === G.L ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
-      ctx.stroke(); ctx.restore();
+      ctx.stroke();
+      // bulles d'ébullition
+      ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1;
+      for (const b of bubbles) { ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+      ctx.restore();
     }
 
     // boules
@@ -504,9 +544,11 @@
     }
     ctx.fillText("mL", G.R + 8, RIM + 6);
 
-    // pissette et pipette
+    // vapeur d'eau qui s'échappe
+    drawVapor();
+
+    // pissette
     drawWashBottle(pouringNow, sy);
-    if (removingNow) drawPipette(sy);
 
     // étiquette de volume
     if (V > 0) {
@@ -525,19 +567,51 @@
     c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
     c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
   }
-  function drawPipette(sy) {
-    const x = G.R - 46, top = RIM - 70, tip = Math.min(G.B - 8, Math.max(sy + 26, RIM + 40));
-    // liquide aspiré
-    const lvl = Math.max(top + 26, tip - 46 - 14 * Math.sin(time * 4));
-    ctx.fillStyle = "rgba(90,160,225,0.55)"; ctx.fillRect(x - 3.5, lvl, 7, tip - 2 - lvl);
-    // tube
-    ctx.strokeStyle = "rgba(78,98,120,0.85)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(x - 5, top + 22); ctx.lineTo(x - 5, tip - 6); ctx.lineTo(x - 1.5, tip); ctx.lineTo(x + 1.5, tip); ctx.lineTo(x + 5, tip - 6); ctx.lineTo(x + 5, top + 22); ctx.stroke();
-    // poire aspirante
-    const sq = 1 + 0.12 * Math.sin(time * 8);
-    ctx.fillStyle = "#c8622a";
-    ctx.beginPath(); ctx.ellipse(x, top + 8, 11 * sq, 15 / sq, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillRect(x - 5, top + 18, 10, 6);
+  // Plaque chauffante : grise à froid, rouge orangé quand elle chauffe
+  function drawHotPlate() {
+    const x0 = G.L - 34, x1 = G.R + 34, top = G.B + 3;
+    const mix = (a, b) => Math.round(a + (b - a) * heat);
+    // halo de chaleur
+    if (heat > 0.01) {
+      const hg = ctx.createLinearGradient(0, top - 26, 0, top);
+      hg.addColorStop(0, "rgba(255,120,40,0)"); hg.addColorStop(1, "rgba(255,110,30," + (0.35 * heat).toFixed(3) + ")");
+      ctx.fillStyle = hg; ctx.fillRect(x0 + 6, top - 26, x1 - x0 - 12, 26);
+    }
+    // plateau
+    ctx.fillStyle = "rgb(" + mix(150, 226) + "," + mix(160, 82) + "," + mix(170, 38) + ")";
+    roundRect(ctx, x0, top, x1 - x0, 8, 3); ctx.fill();
+    // résistance (cercles concentriques visibles quand chaud)
+    if (heat > 0.01) {
+      ctx.strokeStyle = "rgba(255,210,120," + (0.8 * heat).toFixed(3) + ")"; ctx.lineWidth = 1.2;
+      for (let i = 0; i < 4; i++) {
+        const w = 40 + i * 30;
+        ctx.beginPath(); ctx.moveTo((G.L + G.R) / 2 - w, top + 4); ctx.lineTo((G.L + G.R) / 2 + w, top + 4); ctx.stroke();
+      }
+    }
+    // boîtier
+    ctx.fillStyle = "#5b6878";
+    roundRect(ctx, x0 + 6, top + 8, x1 - x0 - 12, 24, 4); ctx.fill();
+    // bouton de réglage
+    ctx.fillStyle = "#d9dee4"; ctx.beginPath(); ctx.arc(x0 + 34, top + 20, 7, 0, Math.PI * 2); ctx.fill();
+    const ang = -Math.PI * 0.75 + heat * Math.PI * 1.1;
+    ctx.strokeStyle = "#3a4552"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(x0 + 34, top + 20); ctx.lineTo(x0 + 34 + Math.cos(ang) * 6, top + 20 + Math.sin(ang) * 6); ctx.stroke();
+    // voyant
+    ctx.fillStyle = heat > 0.05 ? "rgba(255,70,40," + (0.4 + 0.6 * heat).toFixed(3) + ")" : "#8a96a3";
+    ctx.beginPath(); ctx.arc(x1 - 34, top + 20, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "600 10px system-ui, sans-serif"; ctx.textBaseline = "middle";
+    ctx.textAlign = "center"; ctx.fillText("Plaque chauffante", (G.L + G.R) / 2, top + 20.5); ctx.textAlign = "left";
+  }
+  function drawVapor() {
+    for (const p of vapor) {
+      const t = p.life / p.max;
+      const a = 0.32 * Math.min(1, p.life * 4) * (1 - t);
+      if (a <= 0) continue;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      g.addColorStop(0, "rgba(160,175,190," + a.toFixed(3) + ")");
+      g.addColorStop(1, "rgba(160,175,190,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
   }
   function drawWashBottle(pouringNow, sy) {
     const tipX = G.L + 34, tipY = RIM - 26;
@@ -582,7 +656,7 @@
 
   function updateUI() {
     const Vr = Math.round(V);
-    const total = balls.length, dissolved = countState("dissolved"), falling = countState("falling");
+    const total = balls.length;
     const n = nMol();
     setText("rN", soluteIn ? f3d.format(n) + " mol" : "—");
     setText("rNb", soluteIn ? total + " boule" + (total > 1 ? "s" : "") + " × 0,005 mol" : "aucun soluté");
@@ -595,9 +669,6 @@
     setAnim("aV", f3d.format(Vr / 1000) + " L", Vr / 1000);
     if (ok) { const C = n / (Vr / 1000); setAnim("aC", f3.format(C) + " mol·L⁻¹", C); }
     else setAnim("aC", "?", null);
-
-
-
 
     // boutons
     setDisabled("btnSolute", soluteIn || !parseN().ok);
